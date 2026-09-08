@@ -1,9 +1,8 @@
 """Deterministic, explainable eligibility matching."""
 from typing import Any
-from .catalogue import SCHEMES, CATALOGUE_VERSION
 
 
-def evaluate_scheme(scheme: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
+def evaluate_scheme(scheme: dict[str, Any], profile: dict[str, Any], catalogue_version: str) -> dict[str, Any]:
     req = scheme["requires"]
     passed: list[str] = []
     failed: list[str] = []
@@ -24,9 +23,9 @@ def evaluate_scheme(scheme: dict[str, Any], profile: dict[str, Any]) -> dict[str
             ok = actual == expected
             (passed if ok else failed).append(f"{key} requirement is met" if ok else f"{key} requirement is not met")
     status = "not_eligible" if failed else ("needs_verification" if unknown else "eligible")
-    return {"scheme_id": scheme["id"], "name": scheme["name"], "category": scheme["category"], "status": status, "reasons": passed, "blocking_reasons": failed, "needs_verification": unknown, "catalogue_version": CATALOGUE_VERSION}
+    return {"scheme_id": scheme["id"], "name": scheme["name"], "category": scheme["category"], "status": status, "reasons": passed, "blocking_reasons": failed, "needs_verification": unknown, "catalogue_version": catalogue_version}
 
 
-def match(profile: dict[str, Any]) -> list[dict[str, Any]]:
+def match(profile: dict[str, Any], schemes: list[dict[str, Any]], catalogue_version: str) -> list[dict[str, Any]]:
     rank = {"eligible": 0, "needs_verification": 1, "not_eligible": 2}
-    return sorted((evaluate_scheme(s, profile) for s in SCHEMES), key=lambda x: (rank[x["status"]], -len(x["reasons"])))
+    return sorted((evaluate_scheme(s, profile, catalogue_version) for s in schemes), key=lambda x: (rank[x["status"]], -len(x["reasons"])))
