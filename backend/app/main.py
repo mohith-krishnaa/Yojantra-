@@ -3,10 +3,10 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
 
-from .catalogue import CATALOGUE_VERSION, SCHEMES
+from .catalogue_store import load_catalogue
 from .matcher import match
 
-app = FastAPI(title="Yojantra API", version="0.2.0")
+app = FastAPI(title="Yojantra API", version="0.3.0")
 
 
 class Profile(BaseModel):
@@ -26,20 +26,23 @@ class Profile(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "yojantra-api", "version": "0.2.0"}
+    return {"status": "healthy", "service": "yojantra-api", "version": "0.3.0"}
 
 
 @app.get("/api/v1/schemes")
 def schemes():
-    return {"items": SCHEMES, "count": len(SCHEMES), "catalogue_version": CATALOGUE_VERSION}
+    items, version, source = load_catalogue()
+    return {"items": items, "count": len(items), "catalogue_version": version, "catalogue_source": source}
 
 
 @app.post("/api/v1/matches")
 def matches(profile: Profile):
     profile_data = profile.model_dump(exclude_none=True)
+    items, version, source = load_catalogue()
     return {
         "profile": profile_data,
-        "items": match(profile_data),
-        "catalogue_version": CATALOGUE_VERSION,
+        "items": match(profile_data, items, version),
+        "catalogue_version": version,
+        "catalogue_source": source,
         "disclaimer": "Modelled rules only. Confirm eligibility with the official scheme source before applying.",
     }
