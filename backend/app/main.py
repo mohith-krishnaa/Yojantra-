@@ -3,10 +3,11 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
 
+from .action_plan import build_action_plan
 from .catalogue_store import load_catalogue
 from .matcher import match
 
-app = FastAPI(title="Yojantra API", version="0.3.0")
+app = FastAPI(title="Yojantra API", version="0.4.0")
 
 
 class Profile(BaseModel):
@@ -22,11 +23,15 @@ class Profile(BaseModel):
     enterprise_intent: Optional[bool] = None
     food_processing: Optional[bool] = None
     startup: Optional[bool] = None
+    goal: Optional[str] = None
+    project_cost_inr: Optional[float] = None
+    education_status: Optional[str] = None
+    community: Optional[str] = None
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "yojantra-api", "version": "0.3.0"}
+    return {"status": "healthy", "service": "yojantra-api", "version": "0.4.0"}
 
 
 @app.get("/api/v1/schemes")
@@ -39,10 +44,25 @@ def schemes():
 def matches(profile: Profile):
     profile_data = profile.model_dump(exclude_none=True)
     items, version, source = load_catalogue()
+    results = match(profile_data, items, version)
     return {
         "profile": profile_data,
-        "items": match(profile_data, items, version),
+        "items": results,
         "catalogue_version": version,
         "catalogue_source": source,
         "disclaimer": "Modelled rules only. Confirm eligibility with the official scheme source before applying.",
+    }
+
+
+@app.post("/api/v1/action-plan")
+def action_plan(profile: Profile):
+    profile_data = profile.model_dump(exclude_none=True)
+    items, version, source = load_catalogue()
+    results = match(profile_data, items, version)
+    return {
+        "profile": profile_data,
+        "catalogue_version": version,
+        "catalogue_source": source,
+        "plan": build_action_plan(profile_data, results),
+        "disclaimer": "The action plan is based on modelled rules and available profile information. Confirm eligibility and application requirements with the official or authorized provider before applying.",
     }
