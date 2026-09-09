@@ -8,8 +8,9 @@ from .catalogue_store import load_catalogue
 from .loan_calculator import build_loan_quote
 from .matcher import match
 from .partner_router import route_partners
+from .partner_store import load_partners
 
-app = FastAPI(title="Yojantra API", version="0.6.0")
+app = FastAPI(title="Yojantra API", version="0.7.0")
 
 
 class Profile(BaseModel):
@@ -42,7 +43,6 @@ class LoanQuoteRequest(BaseModel):
 
 
 class PartnerRouteRequest(BaseModel):
-    partners: list[dict]
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     required_scheme_type: Optional[str] = None
@@ -50,7 +50,7 @@ class PartnerRouteRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "yojantra-api", "version": "0.6.0"}
+    return {"status": "healthy", "service": "yojantra-api", "version": "0.7.0"}
 
 
 @app.get("/api/v1/schemes")
@@ -94,4 +94,18 @@ def loan_quote(request: LoanQuoteRequest):
 
 @app.post("/api/v1/partner-route")
 def partner_route(request: PartnerRouteRequest):
-    return route_partners(**request.model_dump())
+    partners, source = load_partners()
+    routed = route_partners(
+        partners,
+        latitude=request.latitude,
+        longitude=request.longitude,
+        required_scheme_type=request.required_scheme_type,
+    )
+    routed["partner_data_source"] = source
+    if source != "supabase":
+        routed["verification_needed"].append({
+            "partner_id": None,
+            "name": None,
+            "reason": "Live partner data is unavailable; no partner is being recommended until verified data is available.",
+        })
+    return routed
