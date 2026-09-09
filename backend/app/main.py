@@ -7,8 +7,9 @@ from .action_plan import build_action_plan
 from .catalogue_store import load_catalogue
 from .loan_calculator import build_loan_quote
 from .matcher import match
+from .partner_router import route_partners
 
-app = FastAPI(title="Yojantra API", version="0.5.0")
+app = FastAPI(title="Yojantra API", version="0.6.0")
 
 
 class Profile(BaseModel):
@@ -40,9 +41,16 @@ class LoanQuoteRequest(BaseModel):
     financing_percent: Optional[float] = None
 
 
+class PartnerRouteRequest(BaseModel):
+    partners: list[dict]
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    required_scheme_type: Optional[str] = None
+
+
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "yojantra-api", "version": "0.5.0"}
+    return {"status": "healthy", "service": "yojantra-api", "version": "0.6.0"}
 
 
 @app.get("/api/v1/schemes")
@@ -81,13 +89,9 @@ def action_plan(profile: Profile):
 
 @app.post("/api/v1/loan-quote")
 def loan_quote(request: LoanQuoteRequest):
-    """Return a transparent indicative quote using caller-provided governed scheme terms."""
-    return build_loan_quote(
-        project_cost_inr=request.project_cost_inr,
-        requested_loan_inr=request.requested_loan_inr,
-        annual_rate_percent=request.annual_rate_percent,
-        tenure_months=request.tenure_months,
-        moratorium_months=request.moratorium_months,
-        max_loan_inr=request.max_loan_inr,
-        financing_percent=request.financing_percent,
-    )
+    return build_loan_quote(**request.model_dump())
+
+
+@app.post("/api/v1/partner-route")
+def partner_route(request: PartnerRouteRequest):
+    return route_partners(**request.model_dump())
