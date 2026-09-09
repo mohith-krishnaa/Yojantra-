@@ -7,15 +7,18 @@ def evaluate_scheme(scheme: dict[str, Any], profile: dict[str, Any], catalogue_v
     passed: list[str] = []
     failed: list[str] = []
     unknown: list[str] = []
+    aliases = {"income_max": "income_inr", "project_cost_max": "project_cost_inr", "project_cost_min": "project_cost_inr"}
     for key, expected in req.items():
-        actual = profile.get(key)
+        actual = profile.get(aliases.get(key, key))
         if actual is None:
             unknown.append(key)
             continue
-        if key == "income_max":
-            (passed if actual <= expected else failed).append(
-                "income is within the modelled limit" if actual <= expected else "income exceeds the modelled limit"
-            )
+        if key in {"income_max", "project_cost_max"}:
+            ok = actual <= expected
+            (passed if ok else failed).append(f"{key} requirement is met" if ok else f"{key} requirement is not met")
+        elif key == "project_cost_min":
+            ok = actual > expected
+            (passed if ok else failed).append("project cost is above the modelled threshold" if ok else "project cost is not above the modelled threshold")
         elif key == "occupation":
             ok = str(actual).lower() in {str(x).lower() for x in expected}
             (passed if ok else failed).append("occupation matches the modelled category" if ok else "occupation does not match the modelled category")
